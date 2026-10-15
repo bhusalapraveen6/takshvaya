@@ -7,7 +7,7 @@ import { MapPin, Building2, Briefcase, Calendar, GraduationCap, ShieldCheck, Fla
 import { TrustBadge } from '../../../components/TrustBadge';
 import { SkillMatchWidget } from '../../../components/SkillMatchWidget';
 import { ReportModal } from '../../../components/ReportModal';
-import { SkillMatchAnalysis } from '../../../lib/types';
+import { SkillMatchAnalysis, TrustBadge as TrustBadgeType } from '../../../lib/types';
 
 interface JobDetail {
   id: string;
@@ -35,7 +35,7 @@ interface JobDetail {
   minCgpa: number;
   requiredSkills: string[];
   optionalSkills: string[];
-  badge: 'VERIFIED_COMPANY' | 'SOURCE_VERIFIED' | 'COMMUNITY_FLAGGED';
+  badge: TrustBadgeType;
   sourceOrigin: string;
   postedTime: string;
   lastVerified: string;
@@ -364,7 +364,7 @@ export default function JobDetailPage() {
             minCgpa: apiJob.min_cgpa_or_percentage || 6.0,
             requiredSkills: apiJob.required_skills || ['Programming', 'Problem Solving'],
             optionalSkills: apiJob.optional_skills || [],
-            badge: apiJob.trust_badge || 'VERIFIED_COMPANY',
+            badge: (apiJob.trust_badge as TrustBadgeType) || 'VERIFIED_COMPANY',
             sourceOrigin: apiJob.source_origin || 'DIRECT_POST',
             postedTime: apiJob.postedTimeAgo || 'Today',
             lastVerified: apiJob.lastVerifiedAgo || 'Just now',
