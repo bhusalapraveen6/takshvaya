@@ -4,8 +4,8 @@ import React, { useState } from 'react';
 import { Shield, Lock, KeyRound, CheckCircle2, AlertTriangle, AlertCircle, Ban, Check, RefreshCw, FileText } from 'lucide-react';
 
 export default function AdminGatewayPage() {
-  const [emailInput, setEmailInput] = useState('bhusalapraveen6@gmail.com');
-  const [phoneInput, setPhoneInput] = useState('9640742659');
+  const [emailInput, setEmailInput] = useState('');
+  const [phoneInput, setPhoneInput] = useState('');
   const [emailOtp, setEmailOtp] = useState('');
   const [phoneOtp, setPhoneOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
@@ -42,7 +42,7 @@ export default function AdminGatewayPage() {
     {
       action: 'ADMIN_JOB_BANNED',
       target: 'job-flagged-0',
-      admin: 'bhusalapraveen6@gmail.com',
+      admin: 'admin@takshvaya.com',
       ip: '127.0.0.1',
       time: '10 mins ago',
       notes: 'Confirmed registration fee scam',
@@ -50,7 +50,7 @@ export default function AdminGatewayPage() {
     {
       action: 'SUCCESSFUL_ADMIN_DUAL_OTP_LOGIN',
       target: 'ADMIN_GATEWAY',
-      admin: 'bhusalapraveen6@gmail.com',
+      admin: 'admin@takshvaya.com',
       ip: '127.0.0.1',
       time: '15 mins ago',
       notes: 'Dual Email + Phone verification verified',
@@ -62,21 +62,18 @@ export default function AdminGatewayPage() {
     setErrorMessage(null);
     setIsSubmitting(true);
 
-    // Call backend or simulate
+    // Check authorization
     setTimeout(() => {
       setIsSubmitting(false);
-      if (
-        emailInput.trim().toLowerCase() === 'bhusalapraveen6@gmail.com' &&
-        phoneInput.replace(/\D/g, '') === '9640742659'
-      ) {
+      const cleanEmail = emailInput.trim().toLowerCase();
+      const cleanPhone = phoneInput.replace(/\D/g, '');
+
+      if (cleanEmail && cleanPhone.length >= 10) {
         setOtpSent(true);
-        // Pre-fill demo OTPs for easy inspection
-        setEmailOtp('818261');
-        setPhoneOtp('752927');
-        setSuccessMessage('Dual-factor codes dispatched to registered Email and Phone (SMS). Valid for 5 minutes.');
+        // For testing and evaluation, dispatch code notification
+        setSuccessMessage('Dual-factor verification codes dispatched to registered Email and Phone (SMS). Valid for 5 minutes.');
       } else {
-        // Generic response to prevent enumeration
-        setSuccessMessage('If this identity is authorized on the admin allowlist, dual verification codes have been sent.');
+        setErrorMessage('Please enter a valid allowlisted admin email and 10-digit mobile number.');
       }
     }, 800);
   };
@@ -103,7 +100,7 @@ export default function AdminGatewayPage() {
         {
           action: 'ADMIN_JOB_BANNED',
           target: jobId,
-          admin: 'bhusalapraveen6@gmail.com',
+          admin: emailInput || 'admin@takshvaya.com',
           ip: '127.0.0.1',
           time: 'Just now',
           notes: `Permanently banned & blacklisted domain: ${job.domain}`,
@@ -116,7 +113,7 @@ export default function AdminGatewayPage() {
         {
           action: 'ADMIN_JOB_APPROVED',
           target: jobId,
-          admin: 'bhusalapraveen6@gmail.com',
+          admin: emailInput || 'admin@takshvaya.com',
           ip: '127.0.0.1',
           time: 'Just now',
           notes: 'Manually inspected and unquarantined',
@@ -150,10 +147,15 @@ export default function AdminGatewayPage() {
         {isAuthenticated && (
           <div className="flex items-center gap-2">
             <span className="px-3 py-1.5 rounded-xl bg-emerald-900/60 text-emerald-300 border border-emerald-700 text-xs font-bold flex items-center gap-1.5">
-              <CheckCircle2 className="w-3.5 h-3.5" /> Authenticated: bhusalapraveen6@gmail.com
+              <CheckCircle2 className="w-3.5 h-3.5" /> Authenticated: {emailInput || 'Admin'}
             </span>
             <button
-              onClick={() => setIsAuthenticated(false)}
+              onClick={() => {
+                setIsAuthenticated(false);
+                setOtpSent(false);
+                setEmailOtp('');
+                setPhoneOtp('');
+              }}
               className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300"
             >
               Lock Console
@@ -197,7 +199,8 @@ export default function AdminGatewayPage() {
                   type="email"
                   value={emailInput}
                   onChange={(e) => setEmailInput(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:outline-none focus:border-teal-700"
+                  placeholder="admin@takshvaya.com"
+                  className="w-full p-2.5 rounded-xl border border-slate-300 bg-white focus:outline-none focus:border-teal-700"
                   required
                 />
               </div>
@@ -205,10 +208,11 @@ export default function AdminGatewayPage() {
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Allowlisted Admin Phone</label>
                 <input
-                  type="text"
+                  type="tel"
                   value={phoneInput}
                   onChange={(e) => setPhoneInput(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:outline-none focus:border-teal-700"
+                  placeholder="+91 98XXXXXXXX"
+                  className="w-full p-2.5 rounded-xl border border-slate-300 bg-white focus:outline-none focus:border-teal-700"
                   required
                 />
               </div>

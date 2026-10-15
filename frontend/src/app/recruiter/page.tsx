@@ -1,64 +1,90 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Building2, Award, Briefcase, Plus, Users, ShieldCheck, AlertCircle, CheckCircle2, ChevronRight } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import {
+  Building2,
+  Award,
+  Briefcase,
+  Plus,
+  Users,
+  ShieldCheck,
+  AlertCircle,
+  CheckCircle2,
+  ChevronRight,
+  Edit2,
+  Save,
+  UserCheck
+} from 'lucide-react';
 import { TrustBadge } from '../../components/TrustBadge';
+import { useUser } from '../../lib/user-store';
 
 export default function RecruiterPortalPage() {
+  const { user } = useUser();
+
   const [activeTab, setActiveTab] = useState<'POST_JOB' | 'APPLICANTS'>('POST_JOB');
-  const [jobTitle, setJobTitle] = useState('Junior Fullstack Engineer (Next.js / Python)');
+  const [companyName, setCompanyName] = useState('Acme Technologies');
+  const [recruiterEmail, setRecruiterEmail] = useState('recruiter@acme.com');
+  const [gstin, setGstin] = useState('29AAACA1234F1Z5');
+  const [isEditingOrg, setIsEditingOrg] = useState(false);
+
+  // Job form state
+  const [jobTitle, setJobTitle] = useState('');
   const [roleCategory, setRoleCategory] = useState('Software Engineer');
-  const [description, setDescription] = useState('We are seeking early-career graduates with good problem-solving fundamentals to work on cloud services and frontend user interfaces.');
-  const [salaryMin, setSalaryMin] = useState(700000);
-  const [salaryMax, setSalaryMax] = useState(1200000);
+  const [description, setDescription] = useState('');
+  const [salaryMin, setSalaryMin] = useState(600000);
+  const [salaryMax, setSalaryMax] = useState(1000000);
   const [postError, setPostError] = useState<string | null>(null);
   const [postSuccess, setPostSuccess] = useState(false);
 
-  const [applicants, setApplicants] = useState([
-    {
-      id: 'app-1',
-      name: 'Aditya Sharma',
-      email: 'fresher.demo@gmail.com',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=64&auto=format&fit=crop&q=80',
-      degree: 'B.Tech CS (2024)',
-      cgpa: '8.4 CGPA',
-      matchScore: 88,
-      status: 'SHORTLISTED',
-      appliedAt: 'Yesterday',
-    },
-    {
-      id: 'app-2',
-      name: 'Pooja Nair',
-      email: 'pooja.nair@gmail.com',
-      avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=64&auto=format&fit=crop&q=80',
-      degree: 'B.Tech IT (2024)',
-      cgpa: '8.1 CGPA',
-      matchScore: 82,
-      status: 'APPLIED',
-      appliedAt: '2 days ago',
-    },
-    {
-      id: 'app-3',
-      name: 'Rohan Gupta',
-      email: 'rohan.gupta@gmail.com',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=64&auto=format&fit=crop&q=80',
-      degree: 'BCA (2023)',
-      cgpa: '7.8 CGPA',
-      matchScore: 74,
-      status: 'APPLIED',
-      appliedAt: '3 days ago',
-    },
-  ]);
+  // Dynamic applicants list
+  const [applicants, setApplicants] = useState<Array<{
+    id: string;
+    name: string;
+    email: string;
+    avatar?: string;
+    degree: string;
+    cgpa: string;
+    matchScore: number;
+    status: string;
+    appliedAt: string;
+  }>>([]);
+
+  // Load from user or localStorage
+  useEffect(() => {
+    if (user && user.role === 'RECRUITER') {
+      setRecruiterEmail(user.email);
+      setCompanyName(user.name || 'Acme Technologies');
+    }
+
+    try {
+      const storedApplicants = localStorage.getItem('takshvaya_recruiter_applicants');
+      if (storedApplicants) {
+        setApplicants(JSON.parse(storedApplicants));
+      }
+    } catch (e) {
+      console.warn(e);
+    }
+  }, [user]);
 
   const handlePostJob = (e: React.FormEvent) => {
     e.preventDefault();
     setPostError(null);
     setPostSuccess(false);
 
-    // Client-side anti-fraud check for demo
+    if (!jobTitle.trim()) {
+      setPostError('Please enter a descriptive job title for the fresher opening.');
+      return;
+    }
+
+    if (!description.trim() || description.length < 20) {
+      setPostError('Please provide a comprehensive role description with learning expectations.');
+      return;
+    }
+
+    // Anti-fraud check
     const scamRegex = /registration\s*fee|security\s*deposit|pay\s*before|whatsapp\s*only/i;
     if (scamRegex.test(description)) {
-      setPostError('Anti-Fraud Alert: Jobs demanding registration fees or deposits are strictly rejected.');
+      setPostError('Anti-Fraud Alert: Jobs demanding registration fees, deposits, or private WhatsApp numbers are strictly prohibited.');
       return;
     }
 
@@ -67,30 +93,82 @@ export default function RecruiterPortalPage() {
       return;
     }
 
+    // Save posted job locally
+    const newPostedJob = {
+      id: `job-${Date.now()}`,
+      title: jobTitle.trim(),
+      company: companyName,
+      roleCategory,
+      salaryMin,
+      salaryMax,
+      salaryText: `₹${salaryMin.toLocaleString('en-IN')} - ₹${salaryMax.toLocaleString('en-IN')}`,
+      description,
+      postedAt: 'Just now',
+    };
+
+    try {
+      const existing = JSON.parse(localStorage.getItem('takshvaya_posted_jobs') || '[]');
+      localStorage.setItem('takshvaya_posted_jobs', JSON.stringify([newPostedJob, ...existing]));
+    } catch (err) {
+      console.error(err);
+    }
+
     setPostSuccess(true);
+    setJobTitle('');
+    setDescription('');
   };
 
   const advanceApplicant = (id: string, nextStatus: string) => {
-    setApplicants(
-      applicants.map((a) => (a.id === id ? { ...a, status: nextStatus } : a))
-    );
+    const updated = applicants.map((a) => (a.id === id ? { ...a, status: nextStatus } : a));
+    setApplicants(updated);
+    try {
+      localStorage.setItem('takshvaya_recruiter_applicants', JSON.stringify(updated));
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 space-y-8">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 space-y-8 animate-fade-in">
       {/* Recruiter Header */}
       <div className="bg-white rounded-3xl p-6 sm:p-8 border border-teal-900/10 shadow-card flex flex-col sm:flex-row items-center justify-between gap-6">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-teal-700 text-white flex items-center justify-center">
+          <div className="w-14 h-14 rounded-2xl bg-teal-700 text-white flex items-center justify-center font-bold text-xl shadow-soft">
             <Building2 className="w-7 h-7 text-coral-300" />
           </div>
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <h1 className="text-2xl font-black text-slate-900">CRED Recruiter Portal</h1>
-              <TrustBadge badge="VERIFIED_RECRUITER" />
+              {isEditingOrg ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                    className="p-1.5 border border-slate-300 rounded-lg text-lg font-bold"
+                  />
+                  <button
+                    onClick={() => setIsEditingOrg(false)}
+                    className="px-2.5 py-1 rounded-lg bg-teal-700 text-white text-xs font-bold"
+                  >
+                    Save
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <h1 className="text-2xl font-black text-slate-900">{companyName}</h1>
+                  <TrustBadge badge="VERIFIED_RECRUITER" />
+                  <button
+                    onClick={() => setIsEditingOrg(true)}
+                    className="text-slate-400 hover:text-teal-700 p-1"
+                    title="Edit employer details"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                  </button>
+                </>
+              )}
             </div>
             <p className="text-xs text-slate-500 font-semibold">
-              Official Corporate Domain: <strong className="text-teal-800">kunal@cred.club</strong> • GSTIN29AAACR1234F1Z5
+              Official Corporate Domain: <strong className="text-teal-800">{recruiterEmail}</strong> • GSTIN: {gstin}
             </p>
           </div>
         </div>
@@ -98,13 +176,17 @@ export default function RecruiterPortalPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setActiveTab('POST_JOB')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold ${activeTab === 'POST_JOB' ? 'bg-teal-700 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              activeTab === 'POST_JOB' ? 'bg-teal-700 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
           >
             Post a Job
           </button>
           <button
             onClick={() => setActiveTab('APPLICANTS')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold ${activeTab === 'APPLICANTS' ? 'bg-teal-700 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              activeTab === 'APPLICANTS' ? 'bg-teal-700 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
           >
             Applicant Pipeline ({applicants.length})
           </button>
@@ -117,7 +199,7 @@ export default function RecruiterPortalPage() {
           <div className="pb-4 border-b border-slate-100">
             <h2 className="text-xl font-extrabold text-slate-900">Post a Verified Fresher Position</h2>
             <p className="text-xs text-slate-500 mt-0.5">
-              Positions must be 0–2 years experience only. Real INR compensation brackets are strictly required.
+              Positions must be 0–2 years experience only. Transparent INR compensation brackets are strictly required.
             </p>
           </div>
 
@@ -129,7 +211,7 @@ export default function RecruiterPortalPage() {
           )}
 
           {postSuccess && (
-            <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-center gap-2">
+            <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-center gap-2 animate-fade-in">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
               <span>Job opening published successfully with Verified Recruiter trust badge!</span>
             </div>
@@ -142,6 +224,7 @@ export default function RecruiterPortalPage() {
                 type="text"
                 value={jobTitle}
                 onChange={(e) => setJobTitle(e.target.value)}
+                placeholder="e.g. Junior Fullstack Engineer (React / Node.js) or Graduate Trainee"
                 className="w-full p-2.5 rounded-xl border border-slate-300 focus:outline-none focus:border-teal-700"
                 required
               />
@@ -153,13 +236,14 @@ export default function RecruiterPortalPage() {
                 <select
                   value={roleCategory}
                   onChange={(e) => setRoleCategory(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-slate-300 focus:outline-none focus:border-teal-700"
+                  className="w-full p-2.5 rounded-xl border border-slate-300 focus:outline-none focus:border-teal-700 bg-white"
                 >
                   <option value="Software Engineer">Software Engineer</option>
                   <option value="Data Analyst">Data Analyst</option>
                   <option value="Core Engineering">Core Engineering</option>
                   <option value="Design">UI/UX Design</option>
                   <option value="Marketing">Growth Marketing</option>
+                  <option value="Government & Public Sector">Government & Public Sector</option>
                 </select>
               </div>
 
@@ -167,7 +251,7 @@ export default function RecruiterPortalPage() {
                 <label className="block font-bold text-slate-700 mb-1">Fresher Experience Limit *</label>
                 <input
                   type="text"
-                  value="0 - 1 Year (Fresher)"
+                  value="0 - 2 Years (Fresher Only)"
                   disabled
                   className="w-full p-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-500 cursor-not-allowed"
                 />
@@ -179,36 +263,40 @@ export default function RecruiterPortalPage() {
               <p className="font-bold text-teal-950">Mandatory Annual Compensation Range (INR) *</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-slate-600 mb-1">Minimum Base Salary (₹)</label>
+                  <label className="block text-slate-600 mb-1">Minimum Base Salary (₹ / Year)</label>
                   <input
                     type="number"
-                    value={salaryMin}
                     step="50000"
-                    onChange={(e) => setSalaryMin(parseInt(e.target.value, 10))}
-                    className="w-full p-2 rounded-xl border border-slate-300 bg-white"
+                    value={salaryMin}
+                    onChange={(e) => setSalaryMin(parseInt(e.target.value, 10) || 0)}
+                    className="w-full p-2 rounded-lg border border-slate-300 focus:outline-none focus:border-teal-700 bg-white"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-600 mb-1">Maximum Base Salary (₹)</label>
+                  <label className="block text-slate-600 mb-1">Maximum Base Salary (₹ / Year)</label>
                   <input
                     type="number"
-                    value={salaryMax}
                     step="50000"
-                    onChange={(e) => setSalaryMax(parseInt(e.target.value, 10))}
-                    className="w-full p-2 rounded-xl border border-slate-300 bg-white"
+                    value={salaryMax}
+                    onChange={(e) => setSalaryMax(parseInt(e.target.value, 10) || 0)}
+                    className="w-full p-2 rounded-lg border border-slate-300 focus:outline-none focus:border-teal-700 bg-white"
                     required
                   />
                 </div>
               </div>
+              <p className="text-[11px] text-teal-800">
+                Range: ₹{salaryMin.toLocaleString('en-IN')} – ₹{salaryMax.toLocaleString('en-IN')} per annum.
+              </p>
             </div>
 
             <div>
-              <label className="block font-bold text-slate-700 mb-1">Job Description & Responsibilities *</label>
+              <label className="block font-bold text-slate-700 mb-1">Role Description & Expectations *</label>
               <textarea
+                rows={4}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                rows={4}
+                placeholder="Describe project responsibilities, technologies used, mentorship provided, and eligibility criteria..."
                 className="w-full p-2.5 rounded-xl border border-slate-300 focus:outline-none focus:border-teal-700"
                 required
               />
@@ -216,68 +304,80 @@ export default function RecruiterPortalPage() {
 
             <button
               type="submit"
-              className="px-6 py-2.5 rounded-xl text-xs font-bold bg-teal-700 hover:bg-teal-800 text-white shadow-sm"
+              className="px-6 py-2.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white font-bold shadow-soft flex items-center gap-2 transition-all hover:scale-[1.01]"
             >
-              Publish Verified Job Opening
+              <Plus className="w-4 h-4" />
+              Publish Verified Fresher Job
             </button>
           </form>
         </div>
       ) : (
-        /* Applicant Pipeline ATS */
-        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-teal-900/10 shadow-card space-y-4">
+        /* Applicants Pipeline */
+        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-teal-900/10 shadow-card space-y-6">
           <div className="pb-4 border-b border-slate-100 flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-extrabold text-slate-900">Applicant ATS Pipeline</h2>
-              <p className="text-xs text-slate-500">Candidates are automatically ranked by their skill match score (%).</p>
+              <h2 className="text-xl font-extrabold text-slate-900">Candidate Pipeline & Magic Byte Verified Resumes</h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Review verified fresher applications with skill-matching scores and anti-tamper validations.
+              </p>
             </div>
-            <span className="text-xs font-bold text-teal-800 bg-teal-50 px-3 py-1.5 rounded-xl">
-              {applicants.length} Candidates Screened
-            </span>
           </div>
 
-          <div className="space-y-3">
-            {applicants.map((cand) => (
-              <div
-                key={cand.id}
-                className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs"
-              >
-                <div className="flex items-center gap-3">
-                  <img src={cand.avatar} alt={cand.name} className="w-12 h-12 rounded-xl object-cover border border-slate-200" />
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-extrabold text-slate-900 text-sm">{cand.name}</h4>
-                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                        {cand.matchScore}% Match
-                      </span>
+          {applicants.length === 0 ? (
+            <div className="p-12 text-center text-slate-500 space-y-3">
+              <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center mx-auto text-slate-400">
+                <Users className="w-6 h-6" />
+              </div>
+              <p className="font-bold text-slate-800">No candidate applications received yet</p>
+              <p className="text-xs max-w-sm mx-auto">
+                Once freshers apply to your posted jobs, their verified match scores and magic-byte safe resumes will appear here.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {applicants.map((cand) => (
+                <div
+                  key={cand.id}
+                  className="p-5 rounded-2xl border border-slate-200/80 hover:border-teal-300 bg-white shadow-soft flex flex-col md:flex-row items-start md:items-center justify-between gap-4 transition-all"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-teal-700 text-white flex items-center justify-center font-bold text-sm">
+                      {cand.name.charAt(0)}
                     </div>
-                    <p className="text-slate-500 mt-0.5">{cand.degree} • {cand.cgpa} • Applied {cand.appliedAt}</p>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="font-bold text-slate-900 text-sm">{cand.name}</p>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                          {cand.matchScore}% Match
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500">
+                        {cand.email} • {cand.degree} • {cand.cgpa}
+                      </p>
+                    </div>
                   </div>
-                </div>
 
-                <div className="flex items-center gap-2">
-                  <span className="px-2.5 py-1 rounded-lg font-bold bg-white border border-slate-200 text-slate-700">
-                    Stage: {cand.status}
-                  </span>
-                  {cand.status === 'APPLIED' && (
+                  <div className="flex items-center gap-2 self-end md:self-auto">
+                    <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700">
+                      {cand.status}
+                    </span>
                     <button
                       onClick={() => advanceApplicant(cand.id, 'SHORTLISTED')}
-                      className="px-3 py-1.5 rounded-lg bg-teal-700 text-white font-bold hover:bg-teal-800"
+                      className="px-3 py-1.5 rounded-lg text-xs font-bold bg-teal-50 text-teal-800 hover:bg-teal-100 border border-teal-200"
                     >
                       Shortlist
                     </button>
-                  )}
-                  {cand.status === 'SHORTLISTED' && (
                     <button
                       onClick={() => advanceApplicant(cand.id, 'INTERVIEW')}
-                      className="px-3 py-1.5 rounded-lg bg-purple-700 text-white font-bold hover:bg-purple-800"
+                      className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm"
                     >
-                      Schedule Interview
+                      Invite
                     </button>
-                  )}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

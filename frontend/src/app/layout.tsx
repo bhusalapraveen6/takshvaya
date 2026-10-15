@@ -3,6 +3,8 @@ import './globals.css';
 import { Navbar } from '../components/Navbar';
 import { Footer } from '../components/Footer';
 import { SafetyBanner } from '../components/SafetyBanner';
+import { UserProvider } from '../lib/user-store';
+import { AuthModal } from '../components/AuthModal';
 
 export const metadata: Metadata = {
   title: 'Takshvaya (तक्ष्वया) | The Verified Fresher Career Portal (0-2 Yrs)',
@@ -18,10 +20,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="min-h-screen flex flex-col bg-[#FDFBF7] text-slate-900 antialiased selection:bg-teal-700 selection:text-white">
-        <SafetyBanner />
-        <Navbar />
-        <main className="flex-1">{children}</main>
-        <Footer />
+        <UserProvider>
+          <SafetyBanner />
+          <Navbar />
+          <main className="flex-1">{children}</main>
+          <Footer />
+          <AuthModal />
+        </UserProvider>
       </body>
     </html>
   );

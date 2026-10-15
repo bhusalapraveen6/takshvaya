@@ -1,16 +1,45 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { Sparkles, Briefcase, Compass, Building2, UserCheck, Shield, ChevronDown, LogIn, Menu, X, CheckCircle2 } from 'lucide-react';
+import {
+  Sparkles,
+  Briefcase,
+  Compass,
+  Building2,
+  UserCheck,
+  Shield,
+  ChevronDown,
+  LogIn,
+  LogOut,
+  Menu,
+  X,
+  CheckCircle2,
+  User,
+  Zap
+} from 'lucide-react';
+import { useUser } from '../lib/user-store';
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(true); // Demo candidate logged in by default
-  const [userRole, setUserRole] = useState<'JOB_SEEKER' | 'RECRUITER'>('JOB_SEEKER');
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const { user, logout, openAuthModal, isLoaded } = useUser();
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setUserDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   return (
-    <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-teal-900/10 shadow-sm">
+    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-teal-900/10 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 sm:h-20">
           {/* Logo & Brand */}
@@ -81,38 +110,107 @@ export function Navbar() {
               For Recruiters
             </Link>
 
-            {/* Google Login Simulation */}
-            {isLoggedIn ? (
-              <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
-                <Link
-                  href="/profile"
-                  className="flex items-center gap-2 p-1.5 rounded-full hover:bg-slate-100"
-                  title="Signed in via Google"
+            {/* User Auth Section */}
+            {!isLoaded ? (
+              <div className="w-24 h-8 bg-slate-100 rounded-xl animate-pulse" />
+            ) : user ? (
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+                  className="flex items-center gap-2 p-1.5 rounded-xl hover:bg-slate-100 transition-colors border border-transparent hover:border-slate-200"
                 >
-                  <img
-                    src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=64&auto=format&fit=crop&q=80"
-                    alt="Aditya Sharma"
-                    className="w-8 h-8 rounded-full object-cover border-2 border-teal-600"
-                  />
+                  {user.avatar ? (
+                    <img
+                      src={user.avatar}
+                      alt={user.name}
+                      className="w-8 h-8 rounded-full object-cover border-2 border-teal-600"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-teal-700 text-white flex items-center justify-center font-bold text-xs">
+                      {user.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
                   <div className="text-left hidden xl:block">
-                    <p className="text-xs font-bold text-slate-800 leading-tight">Aditya Sharma</p>
+                    <p className="text-xs font-bold text-slate-800 leading-tight truncate max-w-[120px]">
+                      {user.name}
+                    </p>
                     <p className="text-[10px] text-emerald-600 font-semibold flex items-center gap-0.5">
-                      <CheckCircle2 className="w-2.5 h-2.5" /> Google Verified
+                      <CheckCircle2 className="w-2.5 h-2.5" />
+                      {user.role === 'RECRUITER' ? 'Recruiter' : 'Verified'}
                     </p>
                   </div>
-                </Link>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                </button>
+
+                {/* Dropdown Menu */}
+                {userDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-50 animate-fade-in">
+                    <div className="px-4 py-2 border-b border-slate-100">
+                      <p className="text-xs font-bold text-slate-800 truncate">{user.name}</p>
+                      <p className="text-[11px] text-slate-400 truncate">{user.email}</p>
+                    </div>
+
+                    <Link
+                      href="/profile"
+                      onClick={() => setUserDropdownOpen(false)}
+                      className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-teal-50 hover:text-teal-900"
+                    >
+                      <User className="w-4 h-4 text-teal-600" />
+                      My Profile & Resume
+                    </Link>
+
+                    <Link
+                      href="/applications"
+                      onClick={() => setUserDropdownOpen(false)}
+                      className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-teal-50 hover:text-teal-900"
+                    >
+                      <Briefcase className="w-4 h-4 text-teal-600" />
+                      Applications Tracker
+                    </Link>
+
+                    <Link
+                      href="/auto-apply"
+                      onClick={() => setUserDropdownOpen(false)}
+                      className="flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-teal-50 hover:text-teal-900"
+                    >
+                      <Zap className="w-4 h-4 text-coral-500" />
+                      Auto-Apply Settings
+                    </Link>
+
+                    <div className="border-t border-slate-100 mt-1 pt-1">
+                      <button
+                        onClick={() => {
+                          setUserDropdownOpen(false);
+                          logout();
+                        }}
+                        className="w-full flex items-center gap-2.5 px-4 py-2 text-xs font-semibold text-coral-600 hover:bg-coral-50"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        Sign Out
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
-              <button
-                onClick={() => setIsLoggedIn(true)}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 flex items-center gap-2 shadow-sm"
-              >
-                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-4 h-4" />
-                Sign In with Google
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={openAuthModal}
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 flex items-center gap-2 shadow-sm transition-all"
+                >
+                  <LogIn className="w-3.5 h-3.5 text-teal-700" />
+                  Sign In
+                </button>
+                <button
+                  onClick={openAuthModal}
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-teal-700 text-white hover:bg-teal-800 shadow-sm transition-all"
+                >
+                  Get Started
+                </button>
+              </div>
             )}
 
-            {/* Hidden Admin Gateway Link (Dual OTP) */}
+            {/* Admin Gateway Link */}
             <Link
               href="/admin/gateway"
               className="p-2 rounded-lg text-slate-400 hover:text-coral-500 hover:bg-coral-50"
@@ -124,13 +222,22 @@ export function Navbar() {
 
           {/* Mobile Menu Button */}
           <div className="flex sm:hidden items-center gap-2">
-            <Link
-              href="/admin/gateway"
-              className="p-1.5 text-slate-400 hover:text-coral-500"
-              title="Admin Gateway"
-            >
-              <Shield className="w-4 h-4" />
-            </Link>
+            {!user ? (
+              <button
+                onClick={openAuthModal}
+                className="px-3 py-1.5 rounded-lg text-xs font-bold bg-teal-700 text-white"
+              >
+                Sign In
+              </button>
+            ) : (
+              <Link
+                href="/profile"
+                className="w-7 h-7 rounded-full bg-teal-700 text-white flex items-center justify-center font-bold text-xs"
+              >
+                {user.name.charAt(0).toUpperCase()}
+              </Link>
+            )}
+
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="p-2 rounded-lg text-slate-600 hover:bg-slate-100"
@@ -144,6 +251,37 @@ export function Navbar() {
         {/* Mobile Dropdown */}
         {mobileMenuOpen && (
           <div className="sm:hidden border-t border-slate-200 py-3 space-y-1">
+            {user ? (
+              <div className="px-3 py-2 bg-teal-50/60 rounded-xl mb-2 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-bold text-slate-900">{user.name}</p>
+                  <p className="text-[10px] text-slate-500">{user.email}</p>
+                </div>
+                <button
+                  onClick={() => {
+                    logout();
+                    setMobileMenuOpen(false);
+                  }}
+                  className="text-xs font-bold text-coral-600 flex items-center gap-1"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  Sign Out
+                </button>
+              </div>
+            ) : (
+              <div className="p-2 mb-2">
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    openAuthModal();
+                  }}
+                  className="w-full py-2.5 rounded-xl bg-teal-700 text-white text-xs font-bold"
+                >
+                  Sign In or Create Account
+                </button>
+              </div>
+            )}
+
             <Link
               href="/jobs"
               onClick={() => setMobileMenuOpen(false)}
@@ -180,11 +318,25 @@ export function Navbar() {
               Application Tracker
             </Link>
             <Link
+              href="/auto-apply"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-3 py-2 rounded-md text-sm font-semibold text-slate-700 hover:bg-teal-50"
+            >
+              Auto-Apply Settings
+            </Link>
+            <Link
               href="/recruiter"
               onClick={() => setMobileMenuOpen(false)}
               className="block px-3 py-2 rounded-md text-sm font-semibold text-teal-800 bg-teal-50"
             >
               Recruiter & HR Portal
+            </Link>
+            <Link
+              href="/admin/gateway"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-3 py-2 rounded-md text-sm font-semibold text-slate-400 hover:text-coral-600"
+            >
+              Admin Security Gateway
             </Link>
           </div>
         )}

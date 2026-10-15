@@ -8,6 +8,7 @@ import { TrustBadge } from '../../../components/TrustBadge';
 import { SkillMatchWidget } from '../../../components/SkillMatchWidget';
 import { ReportModal } from '../../../components/ReportModal';
 import { SkillMatchAnalysis, TrustBadge as TrustBadgeType } from '../../../lib/types';
+import { useUser } from '../../../lib/user-store';
 
 interface JobDetail {
   id: string;
@@ -310,19 +311,20 @@ const JOB_CATALOG: Record<string, JobDetail> = {
   },
 };
 
-// Candidate profile skills for dynamic matching
-const CANDIDATE_PROFILE_SKILLS = ['React', 'JavaScript', 'TypeScript', 'HTML/CSS', 'Git', 'Python'];
-
 export default function JobDetailPage() {
   const params = useParams();
   const slug = (Array.isArray(params?.slug) ? params.slug[0] : (params?.slug as string)) || '';
+
+  const { user, applyToJob, isApplied, openAuthModal } = useUser();
 
   // Resolve initial job from catalog by slug or default to first
   const initialJob = JOB_CATALOG[slug] || JOB_CATALOG['associate-software-engineer-frontend-razorpay'];
   const [job, setJob] = useState<JobDetail>(initialJob);
   const [reportModalOpen, setReportModalOpen] = useState(false);
-  const [hasApplied, setHasApplied] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  const [justApplied, setJustApplied] = useState(false);
+
+  const hasApplied = isApplied(job.slug) || justApplied;
 
   // Fetch job dynamically from backend API whenever slug changes
   useEffect(() => {
@@ -395,22 +397,27 @@ export default function JobDetailPage() {
     }
   };
 
-  // Compute live skill match analysis dynamically for the selected job
+  // Compute live skill match analysis dynamically using the user's active skills
+  const activeUserSkills = user?.skills && user.skills.length > 0 ? user.skills : [];
   const matched = job.requiredSkills.filter((s) =>
-    CANDIDATE_PROFILE_SKILLS.some((cs) => cs.toLowerCase() === s.toLowerCase())
+    activeUserSkills.some((cs) => cs.toLowerCase() === s.toLowerCase())
   );
   const missing = job.requiredSkills.filter(
-    (s) => !CANDIDATE_PROFILE_SKILLS.some((cs) => cs.toLowerCase() === s.toLowerCase())
+    (s) => !activeUserSkills.some((cs) => cs.toLowerCase() === s.toLowerCase())
   );
   const matchPercentage =
-    job.requiredSkills.length > 0 ? Math.round((matched.length / job.requiredSkills.length) * 100) : 80;
+    job.requiredSkills.length > 0
+      ? activeUserSkills.length > 0
+        ? Math.round((matched.length / job.requiredSkills.length) * 100)
+        : 70
+      : 80;
 
   const candidateAnalysis: SkillMatchAnalysis = {
     matchScore: matchPercentage,
     matchedSkills: matched,
     missingSkills: missing,
     optionalMatchedSkills: job.optionalSkills.filter((s) =>
-      CANDIDATE_PROFILE_SKILLS.some((cs) => cs.toLowerCase() === s.toLowerCase())
+      activeUserSkills.some((cs) => cs.toLowerCase() === s.toLowerCase())
     ),
     eligibility: {
       isEligible: true,
@@ -497,9 +504,19 @@ export default function JobDetailPage() {
                 Report
               </button>
               <button
-                onClick={() => setHasApplied(true)}
+                onClick={() => {
+                  applyToJob({
+                    id: job.id,
+                    title: job.title,
+                    company: job.company,
+                    companyLogo: job.companyLogo,
+                    matchScore: matchPercentage,
+                    slug: job.slug,
+                  });
+                  setJustApplied(true);
+                }}
                 disabled={hasApplied}
-                className="px-6 py-2.5 rounded-xl text-xs font-bold bg-teal-700 hover:bg-teal-800 text-white shadow-sm flex items-center gap-2 disabled:bg-emerald-600"
+                className="px-6 py-2.5 rounded-xl text-xs font-bold bg-teal-700 hover:bg-teal-800 text-white shadow-sm flex items-center gap-2 disabled:bg-emerald-600 transition-all"
               >
                 {hasApplied ? (
                   <>
