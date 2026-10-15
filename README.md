@@ -24,8 +24,7 @@ Takshvaya is a production-grade career platform engineered specifically for earl
 2. **Dual-Factor OTP-Only Admin Gateway (High-Security Rule)**
    - Hidden administration route. Zero password login, zero Google login.
    - Strictly bound to environment allowlist:
-     - `ADMIN_EMAIL = bhusalapraveen6@gmail.com`
-     - `ADMIN_PHONE = 9640742659`
+     
    - Requires simultaneous dual verification: Email OTP + SMS/WhatsApp OTP.
    - Immutable write-only audit logs.
 
